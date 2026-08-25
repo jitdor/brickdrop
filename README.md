@@ -17,6 +17,7 @@ BrickDrop is a small, native SwiftUI app for importing ROMs onto a TRIMUI Brick 
 - Shows per-file status, destination, skips, and failures
 - Leaves existing destination files unchanged unless **Replace existing files** is enabled
 - Safely ejects the selected SD card from the app
+- Runs `/usr/sbin/dot_clean -m <volume path>` before an in-app eject
 
 BrickDrop does not invoke `dot_clean` or any other shell command while importing or cleaning.
 
@@ -62,7 +63,7 @@ The local app bundle is ad-hoc signed. Distributing it to other Macs requires yo
 3. Drop ROM files or folders onto the large target. Make as many separate drops as needed; each one is added to the queue without copying yet.
 4. Review the complete queue. For an ambiguous file such as a generic `.chd`, `.bin`, `.iso`, or archive, choose its system.
 5. Click **Import** once. BrickDrop bulk-copies all ready queued files, then removes macOS metadata from the card.
-6. Click **Eject** in BrickDrop and wait for the safe-to-remove message. Refresh ROMs on the device if needed.
+6. Click **Eject** in BrickDrop. BrickDrop runs `dot_clean -m` on the selected volume, ejects only after it succeeds, and then shows a safe-to-remove message. Refresh ROMs on the device if needed.
 
 **Clean Metadata Now** can be used without importing. It scans the selected SD card and removes only known metadata names; it does not delete ordinary hidden files or ROM formats.
 

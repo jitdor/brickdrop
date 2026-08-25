@@ -16,6 +16,7 @@ final class AppModel: ObservableObject {
     private let planner = ImportPlanner()
     private let executor = ImportExecutor()
     private let ejector = VolumeEjector()
+    private let dotCleanRunner = DotCleanRunner()
 
     init() {
         sdRoot = bookmarks.restore()
@@ -136,23 +137,33 @@ final class AppModel: ObservableObject {
 
     func ejectSDCard() {
         guard let selectedRoot = sdRoot, canEject else { return }
-        isWorking = true
-        message = "Safely ejecting \(selectedRoot.lastPathComponent)…"
-        bookmarks.suspendAccess()
+        let volume: URL
+        do {
+            volume = try ejector.removableVolume(for: selectedRoot)
+        } catch {
+            message = "Could not eject the SD card: \(error.localizedDescription)"
+            return
+        }
 
-        Task {
-            await Task.yield()
+        isWorking = true
+        message = "Running dot_clean on \(volume.lastPathComponent) before ejecting…"
+
+        Task { [dotCleanRunner] in
             do {
-                let volume = try ejector.eject(selectedRoot: selectedRoot)
+                _ = try await Task.detached(priority: .userInitiated) {
+                    try dotCleanRunner.clean(volumeURL: volume)
+                }.value
+                bookmarks.suspendAccess()
+                try ejector.eject(volumeURL: volume)
                 sdRoot = nil
                 items = []
                 cleanupSummary = nil
                 isWorking = false
-                message = "\(volume.lastPathComponent) was ejected. It is safe to remove."
+                message = "dot_clean finished and \(volume.lastPathComponent) was ejected. It is safe to remove."
             } catch {
                 bookmarks.resumeAccess(to: selectedRoot)
                 isWorking = false
-                message = "Could not eject the SD card: \(error.localizedDescription)"
+                message = "Cleanup or eject failed; the card remains mounted: \(error.localizedDescription)"
             }
         }
     }

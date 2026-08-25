@@ -17,7 +17,7 @@ enum VolumeEjectError: LocalizedError {
 
 @MainActor
 struct VolumeEjector {
-    func eject(selectedRoot: URL) throws -> URL {
+    func removableVolume(for selectedRoot: URL) throws -> URL {
         let values = try selectedRoot.resourceValues(forKeys: [
             .volumeURLKey,
             .volumeIsEjectableKey,
@@ -27,7 +27,10 @@ struct VolumeEjector {
         guard values.volumeIsEjectable == true || values.volumeIsRemovable == true else {
             throw VolumeEjectError.notRemovable(volumeURL.lastPathComponent)
         }
-        try NSWorkspace.shared.unmountAndEjectDevice(at: volumeURL)
         return volumeURL
+    }
+
+    func eject(volumeURL: URL) throws {
+        try NSWorkspace.shared.unmountAndEjectDevice(at: volumeURL)
     }
 }

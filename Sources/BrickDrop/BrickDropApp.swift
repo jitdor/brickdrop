@@ -17,6 +17,9 @@ struct BrickDropApp: App {
                     .keyboardShortcut("o", modifiers: [.command])
                 Button("Clean Metadata Now") { model.cleanMetadataNow() }
                     .disabled(model.sdRoot == nil || model.isWorking)
+                Divider()
+                Button("Eject SD Card") { model.ejectSDCard() }
+                    .disabled(!model.canEject)
             }
         }
     }

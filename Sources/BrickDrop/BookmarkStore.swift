@@ -46,6 +46,16 @@ final class BookmarkStore {
         defaults.removeObject(forKey: key)
     }
 
+    func suspendAccess() {
+        stopAccessingCurrentURL()
+    }
+
+    func resumeAccess(to url: URL) {
+        stopAccessingCurrentURL()
+        _ = url.startAccessingSecurityScopedResource()
+        accessedURL = url
+    }
+
     private func stopAccessingCurrentURL() {
         accessedURL?.stopAccessingSecurityScopedResource()
         accessedURL = nil

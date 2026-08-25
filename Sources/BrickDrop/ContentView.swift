@@ -59,6 +59,10 @@ struct ContentView: View {
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             Spacer()
+            if model.sdRoot != nil {
+                Button("Eject", systemImage: "eject.fill") { model.ejectSDCard() }
+                    .disabled(!model.canEject)
+            }
             Button(model.sdRoot == nil ? "Choose SD Card…" : "Change…") { model.chooseSDCard() }
                 .buttonStyle(.borderedProminent)
         }
@@ -71,9 +75,9 @@ struct ContentView: View {
             Image(systemName: model.isTargeted ? "arrow.down.circle.fill" : "square.and.arrow.down")
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(model.isTargeted ? .white : (model.sdRoot == nil ? Color.secondary : Color.accentColor))
-            Text(model.isTargeted ? "Drop to preview" : "Drop ROM files or folders here")
+            Text(model.isTargeted ? "Drop to add to queue" : (model.items.isEmpty ? "Drop ROM files or folders here" : "Drop more ROMs to add to the queue"))
                 .font(.title3.weight(.semibold))
-            Text("BrickDrop detects the system, preserves disc sets, and previews every destination before copying.")
+            Text("Each drop is added to the queue. BrickDrop copies everything together only when you click Import.")
                 .multilineTextAlignment(.center).foregroundStyle(model.isTargeted ? .white.opacity(0.85) : .secondary)
                 .frame(maxWidth: 520)
             if model.sdRoot == nil {
@@ -98,8 +102,8 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Import preview").font(.headline)
-                    Text("Nothing is copied until you click Import.").font(.caption).foregroundStyle(.secondary)
+                    Text("Import queue").font(.headline)
+                    Text("Add files over multiple drops. Nothing is copied until you click Import.").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text("\(model.items.count) file\(model.items.count == 1 ? "" : "s")")
@@ -154,7 +158,7 @@ struct ContentView: View {
             if !model.items.isEmpty {
                 Toggle("Replace existing files", isOn: $model.overwriteExisting)
                     .toggleStyle(.checkbox).controlSize(.small)
-                Button("Clear") { model.clearResults() }.disabled(model.isWorking)
+                Button("Clear Queue") { model.clearResults() }.disabled(model.isWorking)
                 Button("Import \(model.readyCount) File\(model.readyCount == 1 ? "" : "s")", systemImage: "arrow.right.circle.fill") {
                     model.importFiles()
                 }

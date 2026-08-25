@@ -4,7 +4,7 @@ BrickDrop is a small, native SwiftUI app for importing ROMs onto a TRIMUI Brick 
 
 ## What it does
 
-- Large drag-and-drop target for files and folders
+- Large drag-and-drop target for files and folders, with an accumulating queue across multiple drops
 - Always previews the route and destination before copying
 - Remembers the selected mounted SD card using a security-scoped bookmark
 - Copies into the stock `Roms/<SYSTEM>` folder layout
@@ -16,6 +16,7 @@ BrickDrop is a small, native SwiftUI app for importing ROMs onto a TRIMUI Brick 
 - Removes AppleDouble `._*`, `.DS_Store`, and known macOS volume metadata using native filesystem APIs
 - Shows per-file status, destination, skips, and failures
 - Leaves existing destination files unchanged unless **Replace existing files** is enabled
+- Safely ejects the selected SD card from the app
 
 BrickDrop does not invoke `dot_clean` or any other shell command while importing or cleaning.
 
@@ -58,10 +59,10 @@ The local app bundle is ad-hoc signed. Distributing it to other Macs requires yo
 
 1. Insert and mount the Brick Pro SD card.
 2. Click **Choose SD Card…** and select the root of the mounted card, not its `Roms` folder.
-3. Drop ROM files or folders onto the large target.
-4. Review the preview. For an ambiguous file such as a generic `.chd`, `.bin`, `.iso`, or archive, choose its system.
-5. Click **Import**. BrickDrop copies the files, then removes macOS metadata from the card.
-6. Eject the card normally and refresh ROMs on the device if needed.
+3. Drop ROM files or folders onto the large target. Make as many separate drops as needed; each one is added to the queue without copying yet.
+4. Review the complete queue. For an ambiguous file such as a generic `.chd`, `.bin`, `.iso`, or archive, choose its system.
+5. Click **Import** once. BrickDrop bulk-copies all ready queued files, then removes macOS metadata from the card.
+6. Click **Eject** in BrickDrop and wait for the safe-to-remove message. Refresh ROMs on the device if needed.
 
 **Clean Metadata Now** can be used without importing. It scans the selected SD card and removes only known metadata names; it does not delete ordinary hidden files or ROM formats.
 

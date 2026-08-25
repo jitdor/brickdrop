@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     private let bookmarks = BookmarkStore()
     private let planner = ImportPlanner()
     private let executor = ImportExecutor()
+    private let ejector = VolumeEjector()
 
     init() {
         sdRoot = bookmarks.restore()
@@ -25,7 +26,8 @@ final class AppModel: ObservableObject {
 
     var unresolvedCount: Int { items.filter { $0.status == .needsChoice }.count }
     var readyCount: Int { items.filter { $0.status == .ready }.count }
-    var canImport: Bool { !items.isEmpty && unresolvedCount == 0 && !isWorking && sdRoot != nil }
+    var canImport: Bool { readyCount > 0 && unresolvedCount == 0 && !isWorking && sdRoot != nil }
+    var canEject: Bool { sdRoot != nil && !isWorking }
 
     func chooseSDCard() {
         let panel = NSOpenPanel()
@@ -68,14 +70,18 @@ final class AppModel: ObservableObject {
 
     func prepare(urls: [URL]) {
         guard let sdRoot else { return }
-        items = planner.plan(urls: urls, sdRoot: sdRoot)
+        let planned = planner.plan(urls: urls, sdRoot: sdRoot)
+        let merge = ImportQueue.merge(existing: items, incoming: planned)
+        items = merge.items
         cleanupSummary = nil
-        if items.isEmpty {
+        if planned.isEmpty {
             message = "No supported ROM files were found in that drop."
+        } else if merge.addedCount == 0 && merge.upgradedCount == 0 {
+            message = "Those files are already in the import queue."
         } else if unresolvedCount > 0 {
-            message = "Preview ready. Choose a system for \(unresolvedCount) ambiguous item\(unresolvedCount == 1 ? "" : "s")."
+            message = queueUpdateText(merge) + " Choose a system for \(unresolvedCount) ambiguous item\(unresolvedCount == 1 ? "" : "s")."
         } else {
-            message = "Preview ready — review \(items.count) file\(items.count == 1 ? "" : "s") before importing."
+            message = queueUpdateText(merge) + " Review the queue before importing."
         }
     }
 
@@ -128,6 +134,29 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func ejectSDCard() {
+        guard let selectedRoot = sdRoot, canEject else { return }
+        isWorking = true
+        message = "Safely ejecting \(selectedRoot.lastPathComponent)…"
+        bookmarks.suspendAccess()
+
+        Task {
+            await Task.yield()
+            do {
+                let volume = try ejector.eject(selectedRoot: selectedRoot)
+                sdRoot = nil
+                items = []
+                cleanupSummary = nil
+                isWorking = false
+                message = "\(volume.lastPathComponent) was ejected. It is safe to remove."
+            } catch {
+                bookmarks.resumeAccess(to: selectedRoot)
+                isWorking = false
+                message = "Could not eject the SD card: \(error.localizedDescription)"
+            }
+        }
+    }
+
     func clearResults() {
         items = []
         cleanupSummary = nil
@@ -157,5 +186,16 @@ final class AppModel: ObservableObject {
                 : "Removed \(report.removedCount) macOS metadata item\(report.removedCount == 1 ? "" : "s")."
         }
         return "Removed \(report.removedCount) metadata items; \(report.failures.count) could not be removed."
+    }
+
+    private func queueUpdateText(_ merge: QueueMergeResult) -> String {
+        var parts: [String] = []
+        if merge.addedCount > 0 {
+            parts.append("Added \(merge.addedCount) file\(merge.addedCount == 1 ? "" : "s")")
+        }
+        if merge.upgradedCount > 0 {
+            parts.append("updated \(merge.upgradedCount) disc-set item\(merge.upgradedCount == 1 ? "" : "s")")
+        }
+        return parts.joined(separator: " and ") + "."
     }
 }

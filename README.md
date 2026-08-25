@@ -46,7 +46,7 @@ Run the tests with:
 swift test
 ```
 
-To produce a conventional `BrickDrop.app` bundle in `dist/`:
+To produce a conventional Apple-silicon-only `BrickDrop.app` bundle in `dist/`:
 
 ```sh
 ./scripts/build-app.sh

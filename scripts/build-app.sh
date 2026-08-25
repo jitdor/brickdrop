@@ -8,8 +8,8 @@ APP_DIR="$PROJECT_DIR/dist/BrickDrop.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 
 cd "$PROJECT_DIR"
-swift build --disable-sandbox -c release
-BIN_DIR=$(swift build --disable-sandbox -c release --show-bin-path)
+swift build --disable-sandbox -c release --arch arm64
+BIN_DIR=$(swift build --disable-sandbox -c release --arch arm64 --show-bin-path)
 
 rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS_DIR/MacOS"

@@ -22,6 +22,10 @@ struct ContentView: View {
         }
         .frame(minWidth: 820, minHeight: 680)
         .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(isPresented: $model.isChoosingSDCard) {
+            VolumePickerView()
+                .environmentObject(model)
+        }
     }
 
     private var header: some View {
@@ -197,5 +201,136 @@ struct ContentView: View {
         case .needsChoice: .orange
         default: .secondary
         }
+    }
+}
+
+private struct VolumePickerView: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var selection: MountedVolume.ID?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Choose a removable volume")
+                        .font(.title2.bold())
+                    Spacer()
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        model.refreshVolumes()
+                        selectFirstVolumeIfNeeded()
+                    }
+                }
+                Text("Select the SD card or external drive used by your Brick Pro.")
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+
+            Divider()
+
+            Group {
+                if model.availableVolumes.isEmpty {
+                    ContentUnavailableView(
+                        "No removable volumes found",
+                        systemImage: "externaldrive.badge.questionmark",
+                        description: Text("Connect and mount an SD card or external drive, then click Refresh.")
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(model.availableVolumes) { volume in
+                                volumeRow(volume)
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+
+            HStack {
+                Text("Internal disks are hidden.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel", role: .cancel) {
+                    model.isChoosingSDCard = false
+                }
+                Button("Use This Volume") {
+                    guard let volume = selectedVolume else { return }
+                    model.selectSDCard(volume)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedVolume == nil)
+            }
+            .padding(16)
+        }
+        .frame(width: 560, height: 440)
+        .onAppear {
+            selectFirstVolumeIfNeeded()
+        }
+        .onChange(of: model.availableVolumes) {
+            selectFirstVolumeIfNeeded()
+        }
+    }
+
+    private var selectedVolume: MountedVolume? {
+        model.availableVolumes.first { $0.id == selection }
+    }
+
+    private func volumeRow(_ volume: MountedVolume) -> some View {
+        Button {
+            selection = volume.id
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "externaldrive.fill")
+                    .font(.system(size: 25))
+                    .foregroundStyle(selection == volume.id ? Color.accentColor : .secondary)
+                    .frame(width: 36)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(volume.name)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    HStack(spacing: 8) {
+                        Text(volume.formatDescription)
+                        Text("•")
+                        Text(volume.capacityDescription)
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    Text(volume.url.path)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                Spacer()
+
+                Image(systemName: selection == volume.id ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selection == volume.id ? Color.accentColor : .secondary)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .background(
+                selection == volume.id ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor),
+                in: RoundedRectangle(cornerRadius: 12)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selection == volume.id ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func selectFirstVolumeIfNeeded() {
+        if let selection, model.availableVolumes.contains(where: { $0.id == selection }) {
+            return
+        }
+        selection = model.availableVolumes.first?.id
     }
 }

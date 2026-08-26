@@ -16,7 +16,7 @@ final class BookmarkStore {
 
     func save(_ url: URL) throws {
         stopAccessingCurrentURL()
-        let data = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+        let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
         defaults.set(data, forKey: key)
         _ = url.startAccessingSecurityScopedResource()
         accessedURL = url
@@ -24,21 +24,30 @@ final class BookmarkStore {
 
     func restore() -> URL? {
         guard let data = defaults.data(forKey: key) else { return nil }
-        var stale = false
-        guard let url = try? URL(
-            resolvingBookmarkData: data,
-            options: [.withSecurityScope, .withoutUI],
-            relativeTo: nil,
-            bookmarkDataIsStale: &stale
-        ) else {
-            defaults.removeObject(forKey: key)
-            return nil
+
+        let resolutionOptions: [URL.BookmarkResolutionOptions] = [
+            [.withSecurityScope, .withoutUI],
+            [.withoutUI]
+        ]
+        for options in resolutionOptions {
+            var stale = false
+            guard let url = try? URL(
+                resolvingBookmarkData: data,
+                options: options,
+                relativeTo: nil,
+                bookmarkDataIsStale: &stale
+            ) else {
+                continue
+            }
+            stopAccessingCurrentURL()
+            _ = url.startAccessingSecurityScopedResource()
+            accessedURL = url
+            if stale { try? save(url) }
+            return url
         }
-        stopAccessingCurrentURL()
-        _ = url.startAccessingSecurityScopedResource()
-        accessedURL = url
-        if stale { try? save(url) }
-        return url
+
+        defaults.removeObject(forKey: key)
+        return nil
     }
 
     func clear() {

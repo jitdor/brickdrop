@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import UniformTypeIdentifiers
 
@@ -11,12 +10,15 @@ final class AppModel: ObservableObject {
     @Published var overwriteExisting = false
     @Published var message = "Choose your Brick Pro SD card to begin."
     @Published var cleanupSummary: String?
+    @Published var isChoosingSDCard = false
+    @Published private(set) var availableVolumes: [MountedVolume] = []
 
     private let bookmarks = BookmarkStore()
     private let planner = ImportPlanner()
     private let executor = ImportExecutor()
     private let ejector = VolumeEjector()
     private let dotCleanRunner = DotCleanRunner()
+    private let volumeProvider = MountedVolumeProvider()
 
     init() {
         sdRoot = bookmarks.restore()
@@ -31,23 +33,23 @@ final class AppModel: ObservableObject {
     var canEject: Bool { sdRoot != nil && !isWorking }
 
     func chooseSDCard() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose the Brick Pro SD card"
-        panel.message = "Select the mounted SD card root. BrickDrop will import into its Roms folder."
-        panel.prompt = "Use This SD Card"
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = false
-        if panel.runModal() == .OK, let url = panel.url {
-            do {
-                try bookmarks.save(url)
-                sdRoot = url
-                items = []
-                message = "Ready for ROMs — using \(url.lastPathComponent)."
-            } catch {
-                message = "Could not remember that SD card: \(error.localizedDescription)"
-            }
+        refreshVolumes()
+        isChoosingSDCard = true
+    }
+
+    func refreshVolumes() {
+        availableVolumes = volumeProvider.removableVolumes()
+    }
+
+    func selectSDCard(_ volume: MountedVolume) {
+        do {
+            try bookmarks.save(volume.url)
+            sdRoot = volume.url
+            items = []
+            isChoosingSDCard = false
+            message = "Ready for ROMs — using \(volume.name)."
+        } catch {
+            message = "Could not remember that volume: \(error.localizedDescription)"
         }
     }
 

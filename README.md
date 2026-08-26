@@ -8,7 +8,7 @@ BrickDrop is a small, native SwiftUI app for importing ROMs onto a TRIMUI Brick 
 
 - Large drag-and-drop target for files and folders, with an accumulating queue across multiple drops
 - Always previews the route and destination before copying
-- Remembers the selected mounted SD card using a security-scoped bookmark
+- Remembers the selected mounted SD card using a persistent bookmark
 - Copies into the stock `Roms/<SYSTEM>` folder layout
 - Uses extensions plus file and source-folder names to resolve ambiguous formats
 - Requires an explicit system choice when heuristics are not confident
@@ -61,7 +61,7 @@ The local app bundle is ad-hoc signed. Distributing it to other Macs requires yo
 ## How to use
 
 1. Insert and mount the Brick Pro SD card.
-2. Click **Choose SD Card…** and select the root of the mounted card, not its `Roms` folder.
+2. Click **Choose SD Card…** and select the card from the removable-volumes list.
 3. Drop ROM files or folders onto the large target. Make as many separate drops as needed; each one is added to the queue without copying yet.
 4. Review the complete queue. For an ambiguous file such as a generic `.chd`, `.bin`, `.iso`, or archive, choose its system.
 5. Click **Import** once. BrickDrop bulk-copies all ready queued files, then removes macOS metadata from the card.

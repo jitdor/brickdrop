@@ -2,6 +2,8 @@
 
 BrickDrop is a small, native SwiftUI app for importing ROMs onto a TRIMUI Brick Pro SD card from macOS. Drop files or whole folders, review where every file will go, resolve any ambiguous formats, and then import. BrickDrop removes the Finder metadata that can otherwise appear as duplicate games in the stock launcher.
 
+![BrickDrop main window](assets/screenshots/main-window.png)
+
 ## What it does
 
 - Large drag-and-drop target for files and folders, with an accumulating queue across multiple drops

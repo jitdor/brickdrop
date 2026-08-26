@@ -35,6 +35,11 @@ final class MountedVolumeTests: XCTestCase {
         XCTAssertEqual(StorageCapacityFormatter.string(127_865_454_592), "128 GB")
     }
 
+    func testCapacityHandlesSmallMegabyteAndTwoTerabyteVolumes() {
+        XCTAssertEqual(StorageCapacityFormatter.string(63_963_136), "64 MB")
+        XCTAssertEqual(StorageCapacityFormatter.string(1_999_000_000_000), "2 TB")
+    }
+
     func testCapacityUsesFriendlyTerabytes() {
         XCTAssertEqual(StorageCapacityFormatter.string(1_000_204_886_016), "1 TB")
         XCTAssertEqual(StorageCapacityFormatter.string(1_500_000_000_000), "1.5 TB")

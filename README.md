@@ -120,7 +120,7 @@ The cleaner does not follow symbolic links and does not delete files merely beca
 
 ## Development
 
-The routing, disc-set planning, and metadata safety behavior are covered by XCTest tests in `Tests/BrickDropTests`.
+The routing, disc-set planning, copy semantics (skip/overwrite), and metadata safety (including symlinks) are covered by XCTest tests in `Tests/BrickDropTests`.
 
 ```sh
 swift build

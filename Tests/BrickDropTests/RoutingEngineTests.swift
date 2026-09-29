@@ -51,4 +51,38 @@ final class RoutingEngineTests: XCTestCase {
         let decision = router.route(fileURL: URL(fileURLWithPath: "/ROMs/Arcade/galaga.zip"))
         XCTAssertEqual(decision.system, .arcade)
     }
+
+    func testAliasesMatchWholeWordsOnly() {
+        // "nes" must not fire inside "business", nor "dc" inside "DCollection".
+        XCTAssertNil(router.route(fileURL: URL(fileURLWithPath: "/Incoming/business.iso")).system)
+        XCTAssertNil(router.route(fileURL: URL(fileURLWithPath: "/Incoming/DCollection.iso")).system)
+        XCTAssertNil(router.route(fileURL: URL(fileURLWithPath: "/Incoming/Genesis2.zip")).system)
+    }
+
+    func testAliasesMatchAcrossSeparators() {
+        XCTAssertEqual(router.route(fileURL: URL(fileURLWithPath: "/Incoming/dmg-game.zip")).system, .gb)
+        XCTAssertEqual(router.route(fileURL: URL(fileURLWithPath: "/Incoming/DC_Sonic.chd")).system, .dc)
+        XCTAssertEqual(router.route(fileURL: URL(fileURLWithPath: "/Incoming/Sonic (NES).zip")).system, .fc)
+    }
+
+    func testLongestAliasWins() {
+        let decision = router.route(fileURL: URL(fileURLWithPath: "/Incoming/Game Boy Color/Pokemon.zip"))
+        XCTAssertEqual(decision.system, .gbc)
+    }
+
+    func testBinIgnoresUnrelatedCueInSameFolder() {
+        let decision = router.route(
+            fileURL: URL(fileURLWithPath: "/Incoming/Genesis/sonic.bin"),
+            siblingNames: ["ridge.cue", "sonic.bin"]
+        )
+        XCTAssertEqual(decision.system, .md)
+    }
+
+    func testMultiTrackBinMatchesCue() {
+        let decision = router.route(
+            fileURL: URL(fileURLWithPath: "/Incoming/Ridge Racer (Track 1).bin"),
+            siblingNames: ["Ridge Racer.cue", "Ridge Racer (Track 1).bin"]
+        )
+        XCTAssertEqual(decision.system, .ps)
+    }
 }

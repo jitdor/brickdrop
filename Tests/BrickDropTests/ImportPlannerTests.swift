@@ -64,3 +64,36 @@ final class ImportPlannerTests: XCTestCase {
         XCTAssertTrue(items.allSatisfy { $0.destinationURL?.path.contains("Roms/PS/Game/") == true })
     }
 }
+
+extension ImportPlannerTests {
+    func testM3UIncludesExistingReferencedDiscsAndSkipsMissingOnes() throws {
+        let source = temporaryDirectory.appending(path: "Source")
+        let sd = temporaryDirectory.appending(path: "SD")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sd, withIntermediateDirectories: true)
+        let playlist = source.appending(path: "Final Fantasy VII PS1.m3u")
+        try "# comment\nDisc 1.chd\n\nDisc 2.chd\nMissing.chd\n".write(to: playlist, atomically: true, encoding: .utf8)
+        try Data([1]).write(to: source.appending(path: "Disc 1.chd"))
+        try Data([2]).write(to: source.appending(path: "Disc 2.chd"))
+
+        let items = ImportPlanner().plan(urls: [playlist], sdRoot: sd)
+
+        XCTAssertEqual(items.count, 3)
+        XCTAssertTrue(items.allSatisfy { $0.system == .ps })
+        XCTAssertTrue(items.contains { $0.destinationURL?.path.hasSuffix("Roms/PS/Final Fantasy VII PS1/Disc 2.chd") == true })
+    }
+
+    func testCueIgnoresMissingAndUnquotedReferences() throws {
+        let source = temporaryDirectory.appending(path: "Source")
+        let sd = temporaryDirectory.appending(path: "SD")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sd, withIntermediateDirectories: true)
+        let cue = source.appending(path: "Game.cue")
+        try "FILE Track01.bin BINARY\nFILE \"Missing.bin\" BINARY\n".write(to: cue, atomically: true, encoding: .utf8)
+        try Data([1]).write(to: source.appending(path: "Track01.bin"))
+
+        let items = ImportPlanner().plan(urls: [cue], sdRoot: sd)
+
+        XCTAssertEqual(items.map { $0.sourceURL.lastPathComponent }.sorted(), ["Game.cue", "Track01.bin"])
+    }
+}

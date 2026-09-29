@@ -85,4 +85,12 @@ final class RoutingEngineTests: XCTestCase {
         )
         XCTAssertEqual(decision.system, .ps)
     }
+
+    func testMultiDiscBinMatchesSingleCue() {
+        let decision = router.route(
+            fileURL: URL(fileURLWithPath: "/Incoming/Game (Disc 1).bin"),
+            siblingNames: ["Game.cue", "Game (Disc 1).bin"]
+        )
+        XCTAssertEqual(decision.system, .ps)
+    }
 }

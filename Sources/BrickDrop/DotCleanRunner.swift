@@ -56,7 +56,7 @@ struct DotCleanRunner: Sendable {
             process.terminate()
             if finished.wait(timeout: .now() + 2) == .timedOut {
                 kill(process.processIdentifier, SIGKILL)
-                finished.wait()
+                _ = finished.wait(timeout: .now() + 2)
             }
             _ = drained.wait(timeout: .now() + 2)
             throw DotCleanError.timedOut(seconds: timeout)

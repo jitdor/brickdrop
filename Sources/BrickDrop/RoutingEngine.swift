@@ -56,8 +56,9 @@ struct RoutingEngine: Sendable {
                 let sibling = URL(fileURLWithPath: name)
                 guard sibling.pathExtension.lowercased() == "cue" else { return false }
                 let cueStem = sibling.deletingPathExtension().lastPathComponent.lowercased()
-                // Multi-track dumps name their files "Game (Track 1).bin" next to "Game.cue".
-                return stem == cueStem || stem.hasPrefix(cueStem + " (track")
+                // Multi-track/disc dumps name their files "Game (Track 1).bin" or "Game (Disc 1).bin"
+                // next to a single "Game.cue".
+                return stem == cueStem || stem.hasPrefix(cueStem + " (track") || stem.hasPrefix(cueStem + " (disc")
             }
             if hasCue { return .resolved(.ps, reason: "BIN is part of a CUE disc set") }
             if let heuristic = systemFromContext(context) {

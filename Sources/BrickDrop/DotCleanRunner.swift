@@ -18,7 +18,20 @@ enum DotCleanError: LocalizedError {
 }
 
 private final class OutputBox: @unchecked Sendable {
-    var data = Data()
+    private let lock = NSLock()
+    private var buffer = Data()
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        buffer.append(chunk)
+        lock.unlock()
+    }
+
+    var data: Data {
+        lock.lock()
+        defer { lock.unlock() }
+        return buffer
+    }
 }
 
 struct DotCleanRunner: Sendable {
@@ -43,13 +56,27 @@ struct DotCleanRunner: Sendable {
         process.terminationHandler = { _ in finished.signal() }
         try process.run()
 
-        // Drain the pipe concurrently so a chatty child can't block on a full buffer.
+        // Drain the pipe as data arrives so a chatty child can't block on a full buffer. EOF only
+        // arrives once every holder of the write end closes it, which a backgrounded grandchild
+        // can delay long after the executable itself exits, so every wait on it is bounded.
         let box = OutputBox()
-        let drained = DispatchGroup()
-        drained.enter()
-        DispatchQueue.global().async {
-            box.data = output.fileHandleForReading.readDataToEndOfFile()
-            drained.leave()
+        let drained = DispatchSemaphore(value: 0)
+        let reader = output.fileHandleForReading
+        reader.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                drained.signal()
+            } else {
+                box.append(chunk)
+            }
+        }
+        // Stops reading and closes our end so nothing is left blocked on an inherited pipe.
+        func releasePipe(waitingUpTo grace: TimeInterval) {
+            if drained.wait(timeout: .now() + grace) == .timedOut {
+                reader.readabilityHandler = nil
+                try? reader.close()
+            }
         }
 
         if finished.wait(timeout: .now() + timeout) == .timedOut {
@@ -58,10 +85,10 @@ struct DotCleanRunner: Sendable {
                 kill(process.processIdentifier, SIGKILL)
                 _ = finished.wait(timeout: .now() + 2)
             }
-            _ = drained.wait(timeout: .now() + 2)
+            releasePipe(waitingUpTo: 1)
             throw DotCleanError.timedOut(seconds: timeout)
         }
-        drained.wait()
+        releasePipe(waitingUpTo: 1)
 
         let message = String(data: box.data, encoding: .utf8) ?? ""
         guard process.terminationStatus == 0 else {

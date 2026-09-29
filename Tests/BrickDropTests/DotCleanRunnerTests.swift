@@ -37,4 +37,18 @@ final class DotCleanRunnerTests: XCTestCase {
         }
         XCTAssertLessThan(Date().timeIntervalSince(started), 10)
     }
+
+    func testReturnsWhenExitedProcessLeavesBackgroundChildHoldingOutput() throws {
+        let script = FileManager.default.temporaryDirectory.appending(path: "orphan-\(UUID().uuidString).sh")
+        defer { try? FileManager.default.removeItem(at: script) }
+        try "#!/bin/sh\necho done\nsleep 30 &\nexit 0\n".write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        let runner = DotCleanRunner(executableURL: script, timeout: 0.5)
+        let started = Date()
+
+        let output = try runner.clean(volumeURL: URL(fileURLWithPath: "/Volumes/Card"))
+
+        XCTAssertEqual(output.trimmingCharacters(in: .whitespacesAndNewlines), "done")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+    }
 }

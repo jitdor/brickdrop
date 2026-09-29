@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tag matches app version
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match Info.plist version $version" >&2
+            exit 1
+          fi
+      - name: Test
+        run: swift test
+      - name: Build app
+        run: ./scripts/build-app.sh
+      - name: Package
+        run: |
+          ditto -c -k --keepParent dist/BrickDrop.app "dist/BrickDrop-${GITHUB_REF_NAME#v}.zip"
+          shasum -a 256 "dist/BrickDrop-${GITHUB_REF_NAME#v}.zip" | awk '{print $1}' > dist/sha256.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes=".github/release-notes/$version.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" dist/notes.md
+          else
+            echo "BrickDrop $version" > dist/notes.md
+          fi
+          printf '\nSHA-256: %s\n' "$(cat dist/sha256.txt)" >> dist/notes.md
+          gh release create "$GITHUB_REF_NAME" "dist/BrickDrop-$version.zip" \
+            --title "BrickDrop $version" --notes-file dist/notes.md
